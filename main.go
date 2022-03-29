@@ -1,12 +1,7 @@
 package main
 
-import (
-	"fmt"
-
-	"person"
-)
+import "github.com/usgeeus/geecoin.git/cli"
 
 func main() {
-	gee := person.Person{}
-	fmt.Println(gee)
+	cli.Start()
 }
