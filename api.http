@@ -16,11 +16,15 @@ POST http://localhost:4000/transactions
 
 {
     "to":"lynn",
-    "amount":50
+    "amount":1000
 }
+###
+http://localhost:4000/balance/lynn
 ###
 http://localhost:4000/mempool
 ###
-http://localhost:4000/balance/gee
+http://localhost:4000/balance/41dd6311c15872dac6772c2b22c28eaa8bc811438d9ffbdc666a5128f6299f637300910197558c462798fffb4253dff2bfdda37ba081283ce9c00986f83f282d
 ###
 http://localhost:4000/balance/lynn
+###
+http://localhost:4000/wallet
