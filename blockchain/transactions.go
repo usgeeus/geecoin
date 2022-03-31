@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/usgeeus/geecoin.git/utils"
@@ -13,41 +14,53 @@ const (
 )
 
 type mempool struct {
-	Txs []*Tx `json:"txs"`
+	Txs map[string]*Tx `json:"txs"`
+	M   sync.Mutex     `json:"m"`
 }
 
-var Mempool *mempool = &mempool{}
+var m *mempool
+var memOnce sync.Once
+
+func Mempool() *mempool {
+	memOnce.Do(func() {
+		m = &mempool{
+			Txs: make(map[string]*Tx),
+		}
+	})
+	return m
+}
 
 type Tx struct {
-	Id        string   `json:"id"`
+	ID        string   `json:"id"`
 	Timestamp int      `json:"timestamp"`
 	TxIns     []*TxIn  `json:"txIns"`
 	TxOuts    []*TxOut `json:"txOuts"`
 }
 
 type TxIn struct {
-	TxID      string `json:"txID"`
+	TxID      string `json:"txId"`
 	Index     int    `json:"index"`
 	Signature string `json:"signature"`
 }
+
 type TxOut struct {
 	Address string `json:"address"`
 	Amount  int    `json:"amount"`
 }
 
 type UTxOut struct {
-	TxID   string `json:"txID"`
+	TxID   string `json:"txId"`
 	Index  int    `json:"index"`
 	Amount int    `json:"amount"`
 }
 
 func (t *Tx) getId() {
-	t.Id = utils.Hash(t)
+	t.ID = utils.Hash(t)
 }
 
 func (t *Tx) sign() {
 	for _, txIn := range t.TxIns {
-		txIn.Signature = wallet.Sign(t.Id, wallet.Wallet())
+		txIn.Signature = wallet.Sign(t.ID, wallet.Wallet())
 	}
 }
 
@@ -60,7 +73,7 @@ func validate(tx *Tx) bool {
 			break
 		}
 		address := prevTx.TxOuts[txIn.Index].Address
-		valid = wallet.Verify(txIn.Signature, tx.Id, address)
+		valid = wallet.Verify(txIn.Signature, tx.ID, address)
 		if !valid {
 			break
 		}
@@ -71,7 +84,7 @@ func validate(tx *Tx) bool {
 func isOnMempool(uTxOut *UTxOut) bool {
 	exists := false
 Outer:
-	for _, tx := range Mempool.Txs {
+	for _, tx := range Mempool().Txs {
 		for _, input := range tx.TxIns {
 			if input.TxID == uTxOut.TxID && input.Index == uTxOut.Index {
 				exists = true
@@ -90,7 +103,7 @@ func makeCoinbaseTx(address string) *Tx {
 		{address, minerReward},
 	}
 	tx := Tx{
-		Id:        "",
+		ID:        "",
 		Timestamp: int(time.Now().Unix()),
 		TxIns:     txIns,
 		TxOuts:    txOuts,
@@ -125,7 +138,7 @@ func makeTx(from, to string, amount int) (*Tx, error) {
 	txOut := &TxOut{to, amount}
 	txOuts = append(txOuts, txOut)
 	tx := &Tx{
-		Id:        "",
+		ID:        "",
 		Timestamp: int(time.Now().Unix()),
 		TxIns:     txIns,
 		TxOuts:    txOuts,
@@ -139,19 +152,28 @@ func makeTx(from, to string, amount int) (*Tx, error) {
 	return tx, nil
 }
 
-func (m *mempool) AddTx(to string, amount int) error {
+func (m *mempool) AddTx(to string, amount int) (*Tx, error) {
 	tx, err := makeTx(wallet.Wallet().Address, to, amount)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	m.Txs = append(m.Txs, tx)
-	return nil
+	m.Txs[tx.ID] = tx
+	return tx, nil
 }
 
 func (m *mempool) TxToConfirm() []*Tx {
 	coinbase := makeCoinbaseTx(wallet.Wallet().Address)
-	txs := m.Txs
+	var txs []*Tx
+	for _, tx := range m.Txs {
+		txs = append(txs, tx)
+	}
 	txs = append(txs, coinbase)
-	m.Txs = nil
+	m.Txs = make(map[string]*Tx)
 	return txs
+}
+
+func (m *mempool) AddPeerTx(tx *Tx) {
+	m.M.Lock()
+	defer m.M.Unlock()
+	m.Txs[tx.ID] = tx
 }

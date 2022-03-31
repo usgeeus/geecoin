@@ -1,7 +1,11 @@
 package main
 
+import (
+	"github.com/usgeeus/geecoin.git/cli"
+	"github.com/usgeeus/geecoin.git/db"
+)
+
 func main() {
-	//wallet.Wallet()
-	//defer db.Close()
-	//cli.Start()
+	defer db.Close()
+	cli.Start()
 }

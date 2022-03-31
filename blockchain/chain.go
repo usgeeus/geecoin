@@ -1,6 +1,8 @@
 package blockchain
 
 import (
+	"encoding/json"
+	"net/http"
 	"sync"
 
 	"github.com/usgeeus/geecoin.git/db"
@@ -18,6 +20,7 @@ type blockchain struct {
 	NewestHash        string `json:"newestHash"`
 	Height            int    `json:"height"`
 	CurrentDifficulty int    `json:"currentDifficulty"`
+	m                 sync.Mutex
 }
 
 var b *blockchain
@@ -27,15 +30,18 @@ func (b *blockchain) restore(data []byte) {
 	utils.FromBytes(b, data)
 }
 
-func (b *blockchain) AddBlock() {
+func (b *blockchain) AddBlock() *Block {
 	block := createBlock(b.NewestHash, b.Height+1, getDifficulty(b))
 	b.NewestHash = block.Hash
 	b.Height = block.Height
 	b.CurrentDifficulty = block.Difficulty
 	persistBlockchain(b)
+	return block
 }
 
 func Blocks(b *blockchain) []*Block {
+	b.m.Lock()
+	defer b.m.Unlock()
 	var blocks []*Block
 	hashCursor := b.NewestHash
 	for {
@@ -60,7 +66,7 @@ func Txs(b *blockchain) []*Tx {
 
 func FindTx(b *blockchain, targetID string) *Tx {
 	for _, tx := range Txs(b) {
-		if tx.Id == targetID {
+		if tx.ID == targetID {
 			return tx
 		}
 	}
@@ -110,8 +116,8 @@ func UTxOutsByAddress(address string, b *blockchain) []*UTxOut {
 			}
 			for index, output := range tx.TxOuts {
 				if output.Address == address {
-					if _, ok := creatorTxs[tx.Id]; !ok {
-						uTxOut := &UTxOut{tx.Id, index, output.Amount}
+					if _, ok := creatorTxs[tx.ID]; !ok {
+						uTxOut := &UTxOut{tx.ID, index, output.Amount}
 						if !isOnMempool(uTxOut) {
 							uTxOuts = append(uTxOuts, uTxOut)
 						}
@@ -147,4 +153,42 @@ func Blockchain() *blockchain {
 		}
 	})
 	return b
+}
+
+func Status(b *blockchain, w http.ResponseWriter) {
+	b.m.Lock()
+	defer b.m.Unlock()
+	utils.HandlerErr(json.NewEncoder(w).Encode(b))
+}
+
+func (b *blockchain) Replace(newBlocks []*Block) {
+	b.m.Lock()
+	defer b.m.Unlock()
+	b.CurrentDifficulty = newBlocks[0].Difficulty
+	b.Height = len(newBlocks)
+	b.NewestHash = newBlocks[0].Hash
+	persistBlockchain(b)
+	db.EmptyBlocks()
+	for _, block := range newBlocks {
+		persistBlock(block)
+	}
+}
+
+func (b *blockchain) AddPeerBlock(newBlock *Block) {
+	b.m.Lock()
+	m.M.Lock()
+	defer b.m.Unlock()
+	defer m.M.Unlock()
+	b.Height += 1
+	b.CurrentDifficulty = newBlock.Difficulty
+	b.NewestHash = newBlock.Hash
+	persistBlockchain(b)
+	persistBlock(newBlock)
+	//mempool
+	for _, tx := range newBlock.Transactions {
+		_, ok := m.Txs[tx.ID]
+		if ok {
+			delete(m.Txs, tx.ID)
+		}
+	}
 }
