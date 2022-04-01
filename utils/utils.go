@@ -1,3 +1,4 @@
+// utils contains function to be used across the application.
 package utils
 
 import (
@@ -10,9 +11,11 @@ import (
 	"strings"
 )
 
+var logFn = log.Panic
+
 func HandlerErr(err error) {
 	if err != nil {
-		log.Panic(err)
+		logFn(err)
 	}
 }
 
@@ -23,6 +26,7 @@ func ToBytes(i interface{}) []byte {
 	return aBuffer.Bytes()
 }
 
+// takes an interface and data and then will encode the data to the interface
 func FromBytes(i interface{}, data []byte) {
 	decoder := gob.NewDecoder(bytes.NewReader(data))
 	HandlerErr(decoder.Decode(i))
