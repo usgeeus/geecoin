@@ -44,6 +44,8 @@ func BroadcastNewBlock(b *blockchain.Block) {
 }
 
 func BoradcastNewTx(tx *blockchain.Tx) {
+	Peers.m.Lock()
+	defer Peers.m.Unlock()
 	for _, p := range Peers.v {
 		notifyNewTx(tx, p)
 	}

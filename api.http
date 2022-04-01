@@ -4,7 +4,7 @@ http://localhost:3000/status
 ###
 http://localhost:3000/blocks
 ###
-POST http://localhost:5000/blocks
+POST http://localhost:4000/blocks
 
 {
     "message": "Mine me!"
@@ -12,7 +12,7 @@ POST http://localhost:5000/blocks
 ###
 http://localhost:4000/balance/gee?total=true
 ###
-POST http://localhost:5000/transactions
+POST http://localhost:4000/transactions
 
 {
     "to":"lynn",
@@ -25,19 +25,19 @@ http://localhost:4000/mempool
 ###
 http://localhost:3000/mempool
 ###
-http://localhost:4000/balance/41dd6311c15872dac6772c2b22c28eaa8bc811438d9ffbdc666a5128f6299f637300910197558c462798fffb4253dff2bfdda37ba081283ce9c00986f83f282d
+http://localhost:4000/balance/41dd6311c15872dac6772c2b22c28eaa8bc811438d9ffbdc666a5128f6299f637300910197558c462798fffb4253dff2bfdda37ba081283ce9c00986f83f282d?total=true
 ###
 http://localhost:4000/balance/lynn
 ###
-http://localhost:4000/wallet
+http://localhost:3000/wallet
 ###
-POST http://localhost:2000/peers
+POST http://localhost:4000/peers
 
 {
     "address": "127.0.0.1",
-    "port": "5000"
+    "port": "3000"
 }
 ###
-http://localhost:2000/peers
-###
 http://localhost:4000/peers
+###
+http://localhost:3000/peers
